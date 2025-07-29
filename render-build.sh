@@ -9,7 +9,7 @@ npm ci
 
 # Clean and build
 echo "Building application..."
-npx nest build
+npx @nestjs/cli build
 
 # Verify build output
 echo "Verifying build output..."

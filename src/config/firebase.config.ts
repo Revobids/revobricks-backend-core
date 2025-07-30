@@ -3,15 +3,22 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class FirebaseService {
-  private app: admin.app.App;
+  private app: admin.app.App | null;
 
   constructor() {
+    this.app = null; // Initialize to null
     const path = require('path');
     const fs = require('fs');
     
-    // Try multiple possible paths
+    console.log('🔍 Firebase Service initialization');
+    console.log('Current working directory:', process.cwd());
+    console.log('__dirname:', __dirname);
+    console.log('FIREBASE_SERVICE_ACCOUNT_PATH:', process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 'NOT SET');
+    
+    // Try multiple possible paths - absolute paths first for reliability
     const possiblePaths = [
       process.env.FIREBASE_SERVICE_ACCOUNT_PATH,
+      path.resolve(process.cwd(), 'config/revobricks-firebase-adminsdk.json'), // Absolute path from project root
       path.join(process.cwd(), 'config/revobricks-firebase-adminsdk.json'),
       path.join(__dirname, '../../../config/revobricks-firebase-adminsdk.json'), // From dist/config back to root/config
       path.join(__dirname, '../../config/revobricks-firebase-adminsdk.json'),
@@ -20,36 +27,54 @@ export class FirebaseService {
 
     let serviceAccountPath = null;
     
+    console.log('Trying Firebase config paths:');
     for (const pathToTry of possiblePaths) {
-      if (fs.existsSync(pathToTry)) {
+      const exists = fs.existsSync(pathToTry);
+      const resolved = path.resolve(pathToTry);
+      console.log(`  - ${pathToTry} (${resolved}) -> ${exists ? '✅' : '❌'}`);
+      
+      if (exists && !serviceAccountPath) {
         serviceAccountPath = pathToTry;
-        break;
       }
     }
 
     if (!serviceAccountPath) {
-      console.error('Firebase service account file not found. Tried paths:', possiblePaths);
+      console.error('❌ Firebase service account file not found');
       console.log('Firebase features will be disabled');
       return;
     }
 
     try {
       console.log('Attempting to initialize Firebase with service account:', serviceAccountPath);
-      const serviceAccount = require(serviceAccountPath);
+      
+      // Use absolute path for require() to avoid module resolution issues
+      const absolutePath = path.isAbsolute(serviceAccountPath) 
+        ? serviceAccountPath 
+        : path.resolve(serviceAccountPath);
+      
+      console.log('Resolved absolute path:', absolutePath);
+      const serviceAccount = require(absolutePath);
       
       if (!serviceAccount.project_id) {
         throw new Error('Invalid service account file - missing project_id');
       }
       
-      this.app = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: serviceAccount.project_id
-      });
-      console.log('Firebase Admin SDK initialized successfully');
+      // Check if Firebase Admin is already initialized
+      if (admin.apps.length > 0) {
+        console.log('Firebase Admin already initialized, using existing instance');
+        this.app = admin.app();
+      } else {
+        this.app = admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          projectId: serviceAccount.project_id
+        });
+        console.log('Firebase Admin SDK initialized successfully');
+      }
       console.log('Project ID:', serviceAccount.project_id);
     } catch (error) {
       console.error('Failed to initialize Firebase Admin SDK:', error.message || error);
       console.log('Firebase features will be disabled');
+      this.app = null;
     }
   }
 

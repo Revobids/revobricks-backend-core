@@ -23,7 +23,10 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed": "ts-node -r tsconfig-paths/register src/scripts/seed-database.ts"
+    "seed": "ts-node -r tsconfig-paths/register src/scripts/seed-database.ts",
+    "db:sync": "ts-node -r tsconfig-paths/register src/scripts/sync-database.ts",
+    "db:reset": "ts-node -r tsconfig-paths/register src/scripts/reset-database.ts",
+    "db:setup": "npm run db:reset && npm run seed"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

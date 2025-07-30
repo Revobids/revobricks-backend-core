@@ -1,3 +1,6 @@
+import { config } from 'dotenv';
+config(); // Load environment variables
+
 import { DataSource } from 'typeorm';
 import { typeOrmConfig } from '../config/typeorm.config';
 import { RealEstateDeveloper } from '../entities/real-estate-developer.entity';

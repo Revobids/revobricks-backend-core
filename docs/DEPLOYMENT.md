@@ -32,8 +32,8 @@ TYPEORM_SYNCHRONIZE=false
 ```
 
 ### 4. Firebase Service Account
-1. Upload `revobricks-firebase-adminsdk.json` to Render (or use environment variables)
-2. Set `FIREBASE_SERVICE_ACCOUNT_PATH=./revobricks-firebase-adminsdk.json`
+1. Upload `config/revobricks-firebase-adminsdk.json` to Render (or use environment variables)
+2. Set `FIREBASE_SERVICE_ACCOUNT_PATH=./config/revobricks-firebase-adminsdk.json`
 
 ### 5. Database Schema
 Since synchronize is disabled in production, you need to create tables manually:

@@ -12,9 +12,10 @@ export class FirebaseService {
     // Try multiple possible paths
     const possiblePaths = [
       process.env.FIREBASE_SERVICE_ACCOUNT_PATH,
-      path.join(process.cwd(), 'revobricks-firebase-adminsdk.json'),
-      path.join(__dirname, '../../revobricks-firebase-adminsdk.json'),
-      './revobricks-firebase-adminsdk.json'
+      path.join(process.cwd(), 'config/revobricks-firebase-adminsdk.json'),
+      path.join(__dirname, '../../../config/revobricks-firebase-adminsdk.json'), // From dist/config back to root/config
+      path.join(__dirname, '../../config/revobricks-firebase-adminsdk.json'),
+      './config/revobricks-firebase-adminsdk.json'
     ].filter(Boolean);
 
     let serviceAccountPath = null;

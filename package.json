@@ -26,7 +26,9 @@
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed-database.ts",
     "db:sync": "ts-node -r tsconfig-paths/register src/scripts/sync-database.ts",
     "db:reset": "ts-node -r tsconfig-paths/register src/scripts/reset-database.ts",
-    "db:setup": "npm run db:reset && npm run seed"
+    "db:setup": "npm run db:reset && npm run seed",
+    "db:check": "ts-node -r tsconfig-paths/register src/scripts/check-database.ts",
+    "db:test": "ts-node -r tsconfig-paths/register src/scripts/test-neon-connection.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

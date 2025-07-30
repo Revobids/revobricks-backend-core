@@ -18,6 +18,8 @@ import {
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AssignEmployeeDto } from './dto/assign-employee.dto';
+import { GetProjectsDto } from './dto/get-projects.dto';
+import { Bookmark } from '../../entities/bookmark.entity';
 import { PublishProjectDto } from './dto/publish-project.dto';
 
 @Injectable()
@@ -29,6 +31,8 @@ export class ProjectService {
     private projectEmployeeRepository: Repository<ProjectEmployee>,
     @InjectRepository(RealEstateDeveloperEmployee)
     private userRepository: Repository<RealEstateDeveloperEmployee>,
+    @InjectRepository(Bookmark)
+    private bookmarkRepository: Repository<Bookmark>,
   ) {}
 
   async create(
@@ -283,5 +287,74 @@ export class ProjectService {
         createdAt: 'DESC',
       },
     });
+  }
+
+  async getPublishedProjectsWithFilters(filters: GetProjectsDto): Promise<Project[]> {
+    const query = this.projectRepository.createQueryBuilder('project')
+      .leftJoinAndSelect('project.realEstateDeveloper', 'developer')
+      .where('project.status = :status', { status: ProjectStatus.PUBLISHED })
+      .andWhere('project.isActive = :isActive', { isActive: true });
+
+    if (filters.city) {
+      query.andWhere('LOWER(project.city) = LOWER(:city)', { city: filters.city });
+    }
+
+    if (filters.state) {
+      query.andWhere('LOWER(project.state) = LOWER(:state)', { state: filters.state });
+    }
+
+    if (filters.minPrice !== undefined) {
+      query.andWhere('project.minPrice >= :minPrice', { minPrice: filters.minPrice });
+    }
+
+    if (filters.maxPrice !== undefined) {
+      query.andWhere('project.maxPrice <= :maxPrice', { maxPrice: filters.maxPrice });
+    }
+
+    if (filters.projectType) {
+      query.andWhere('project.projectType = :projectType', { projectType: filters.projectType });
+    }
+
+    if (filters.propertyType) {
+      query.andWhere('project.propertyType = :propertyType', { propertyType: filters.propertyType });
+    }
+
+    return query.orderBy('project.createdAt', 'DESC').getMany();
+  }
+
+  async getPublishedProjectById(id: string): Promise<Project> {
+    const project = await this.projectRepository.findOne({
+      where: {
+        id,
+        status: ProjectStatus.PUBLISHED,
+        isActive: true,
+      },
+      relations: ['realEstateDeveloper'],
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found or not published');
+    }
+
+    return project;
+  }
+
+  async getPublishedProjectWithBookmark(
+    projectId: string,
+    userId: string,
+  ): Promise<Project & { isBookmarked: boolean }> {
+    const project = await this.getPublishedProjectById(projectId);
+
+    const bookmark = await this.bookmarkRepository.findOne({
+      where: {
+        user: { id: userId },
+        project: { id: projectId },
+      },
+    });
+
+    return {
+      ...project,
+      isBookmarked: !!bookmark,
+    };
   }
 }

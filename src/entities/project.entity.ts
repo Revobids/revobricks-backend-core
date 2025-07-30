@@ -11,6 +11,7 @@ import {
 import { RealEstateDeveloper } from './real-estate-developer.entity';
 import { RealEstateDeveloperEmployee } from './real-estate-developer-employee.entity';
 import { ProjectEmployee } from './project-employee.entity';
+import { Bookmark } from './bookmark.entity';
 
 export enum ProjectStatus {
   UNPUBLISHED = 'UNPUBLISHED',
@@ -176,6 +177,9 @@ export class Project {
 
   @OneToMany(() => ProjectEmployee, (employee) => employee.project)
   projectEmployees: ProjectEmployee[];
+
+  @OneToMany(() => Bookmark, (bookmark) => bookmark.project)
+  bookmarks: Bookmark[];
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;

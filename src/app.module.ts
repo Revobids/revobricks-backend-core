@@ -10,6 +10,7 @@ import { OfficeModule } from './modules/office/office.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { ProjectModule } from './modules/project/project.module';
 import { UserAuthModule } from './modules/user-auth/user-auth.module';
+import { BookmarkModule } from './modules/bookmark/bookmark.module';
 import { FirebaseModule } from './config/firebase.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { FirebaseModule } from './config/firebase.module';
     EmployeeModule,
     ProjectModule,
     UserAuthModule,
+    BookmarkModule,
   ],
   controllers: [AppController],
   providers: [AppService],

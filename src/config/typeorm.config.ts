@@ -6,6 +6,7 @@ import {
   Project,
   ProjectEmployee,
   User,
+  Bookmark,
 } from '../entities';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
@@ -24,6 +25,7 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     Project,
     ProjectEmployee,
     User,
+    Bookmark,
   ],
   synchronize: process.env.NODE_ENV !== 'production', // Only in development
   dropSchema: false,

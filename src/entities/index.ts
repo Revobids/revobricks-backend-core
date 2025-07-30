@@ -4,3 +4,4 @@ export * from './office.entity';
 export * from './project.entity';
 export * from './project-employee.entity';
 export * from './user.entity';
+export * from './bookmark.entity';

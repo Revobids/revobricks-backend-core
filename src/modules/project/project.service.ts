@@ -22,6 +22,7 @@ import { GetProjectsDto } from './dto/get-projects.dto';
 import { Bookmark } from '../../entities/bookmark.entity';
 import { PublishProjectDto } from './dto/publish-project.dto';
 import { UploadImageDto, UploadImageResponseDto } from './dto/upload-image.dto';
+import { DeleteImageResponseDto } from './dto/delete-image-response.dto';
 import { S3Service } from '../../services/s3.service';
 
 @Injectable()
@@ -324,7 +325,7 @@ export class ProjectService {
     id: string,
     imageUrl: string,
     user: RealEstateDeveloperEmployee,
-  ): Promise<void> {
+  ): Promise<DeleteImageResponseDto> {
     const project = await this.findOne(id, user);
 
     if (!project.images || !project.images.some(img => img.url === imageUrl)) {
@@ -341,6 +342,13 @@ export class ProjectService {
     // Remove from project images array
     project.images = project.images.filter(img => img.url !== imageUrl);
     await this.projectRepository.save(project);
+
+    // Return success message with details
+    return {
+      message: 'Image deleted successfully',
+      deletedImageUrl: imageUrl,
+      remainingImagesCount: project.images.length,
+    };
   }
 
   async remove(id: string, user: RealEstateDeveloperEmployee): Promise<void> {

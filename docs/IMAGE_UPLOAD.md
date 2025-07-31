@@ -68,6 +68,16 @@ Remove an image from a project and delete it from S3.
 }
 ```
 
+#### Response
+
+```json
+{
+  "message": "Image deleted successfully",
+  "deletedImageUrl": "https://revobids-images.s3.eu-north-1.amazonaws.com/projects/uuid/images/filename.jpg",
+  "remainingImagesCount": 4
+}
+```
+
 ## Usage Examples
 
 ### Using cURL

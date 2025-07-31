@@ -31,6 +31,7 @@ import { AssignEmployeeDto } from './dto/assign-employee.dto';
 import { PublishProjectDto } from './dto/publish-project.dto';
 import { UploadImageDto, UploadImageResponseDto } from './dto/upload-image.dto';
 import { DeleteImageDto } from './dto/delete-image.dto';
+import { DeleteImageResponseDto } from './dto/delete-image-response.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
@@ -211,16 +212,15 @@ export class ProjectController {
 
   @Delete(':id/images')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
-  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an image from a project' })
-  @ApiResponse({ status: 204, description: 'Image deleted successfully' })
+  @ApiResponse({ status: 200, description: 'Image deleted successfully', type: DeleteImageResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request - invalid image URL' })
   @ApiResponse({ status: 404, description: 'Project or image not found' })
   async deleteImage(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() deleteImageDto: DeleteImageDto,
     @GetUser() user: RealEstateDeveloperEmployee,
-  ): Promise<void> {
+  ): Promise<DeleteImageResponseDto> {
     return this.projectService.deleteImage(id, deleteImageDto.imageUrl, user);
   }
 

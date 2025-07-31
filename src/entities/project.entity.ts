@@ -142,7 +142,11 @@ export class Project {
   }[];
 
   @Column({ type: 'json', nullable: true })
-  images: string[];
+  images: {
+    url: string;
+    type: string;
+    caption: string;
+  }[];
 
   @Column({ type: 'json', nullable: true })
   brochures: {

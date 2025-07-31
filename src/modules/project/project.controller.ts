@@ -12,9 +12,10 @@ import {
   ParseUUIDPipe,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
   BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -147,61 +148,65 @@ export class ProjectController {
     return this.projectService.removeEmployee(id, employeeId, user);
   }
 
-  @Post(':id/upload-image')
+  @Post(':id/upload-images')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(FilesInterceptor('images', 10)) // Allow up to 10 files
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    description: 'Upload image file with optional metadata',
+    description: 'Upload multiple image files with shared metadata',
     schema: {
       type: 'object',
       properties: {
-        image: {
-          type: 'string',
-          format: 'binary',
-          description: 'Image file to upload (JPEG, PNG, WebP)',
+        images: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary',
+          },
+          description: 'Multiple image files to upload (JPEG, PNG, WebP)',
         },
         type: {
           type: 'string',
           enum: ['EXTERIOR', 'INTERIOR', 'FLOOR_PLAN', 'AMENITY', 'LOCATION', 'CONSTRUCTION', 'OTHER'],
-          description: 'Type of image',
+          description: 'Type of images (applies to all uploaded images)',
           default: 'OTHER',
         },
         caption: {
           type: 'string',
-          description: 'Caption for the image',
+          description: 'Caption for the images (applies to all uploaded images)',
         },
       },
-      required: ['image'],
+      required: ['images'],
     },
   })
-  @ApiOperation({ summary: 'Upload an image for a project' })
-  @ApiResponse({ status: 201, description: 'Image uploaded successfully', type: UploadImageResponseDto })
-  @ApiResponse({ status: 400, description: 'Bad request - invalid file or missing data' })
+  @ApiOperation({ summary: 'Upload multiple images for a project' })
+  @ApiResponse({ status: 201, description: 'Images uploaded successfully', type: [UploadImageResponseDto] })
+  @ApiResponse({ status: 400, description: 'Bad request - invalid files or missing data' })
   @ApiResponse({ status: 404, description: 'Project not found' })
-  async uploadImage(
+  async uploadImages(
     @Param('id', ParseUUIDPipe) id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
     @Body() uploadImageDto: UploadImageDto,
     @GetUser() user: RealEstateDeveloperEmployee,
-  ): Promise<UploadImageResponseDto> {
-    if (!file) {
-      throw new BadRequestException('No image file provided');
+  ): Promise<UploadImageResponseDto[]> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No image files provided');
     }
 
-    // Validate file type
+    // Validate each file
     const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Invalid file type. Only JPEG, PNG, and WebP images are allowed');
-    }
-
-    // Validate file size (5MB limit)
     const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      throw new BadRequestException('File size too large. Maximum size is 5MB');
+
+    for (const file of files) {
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        throw new BadRequestException(`Invalid file type for ${file.originalname}. Only JPEG, PNG, and WebP images are allowed`);
+      }
+      if (file.size > maxSize) {
+        throw new BadRequestException(`File ${file.originalname} is too large. Maximum size is 5MB`);
+      }
     }
 
-    return this.projectService.uploadImage(id, file, uploadImageDto, user);
+    return this.projectService.uploadImages(id, files, uploadImageDto, user);
   }
 
   @Delete(':id/images')

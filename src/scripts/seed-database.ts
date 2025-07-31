@@ -372,9 +372,21 @@ async function seedDatabase() {
             },
           ],
           images: [
-            `https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800`,
-            `https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800`,
-            `https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=800`,
+            {
+              url: `https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800`,
+              type: 'EXTERIOR',
+              caption: 'Building Exterior View',
+            },
+            {
+              url: `https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800`,
+              type: 'INTERIOR',
+              caption: 'Sample Interior',
+            },
+            {
+              url: `https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=800`,
+              type: 'AMENITY',
+              caption: 'Amenities View',
+            },
           ],
           brochures: [
             {

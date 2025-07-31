@@ -73,12 +73,8 @@ export class ProjectService {
       );
     }
 
-    // Convert ImageDto[] to string[] if images are provided
-    const images = projectData.images?.map(img => img.url) || [];
-
     const project = this.projectRepository.create({
       ...projectData,
-      images, // Use the converted string array
       realEstateDeveloperId: user.realEstateDeveloperId,
       projectManagerId,
       salesManagerId,
@@ -276,40 +272,52 @@ export class ProjectService {
     await this.projectEmployeeRepository.save(assignment);
   }
 
-  async uploadImage(
+  async uploadImages(
     id: string,
-    file: Express.Multer.File,
+    files: Express.Multer.File[],
     uploadImageDto: UploadImageDto,
     user: RealEstateDeveloperEmployee,
-  ): Promise<UploadImageResponseDto> {
+  ): Promise<UploadImageResponseDto[]> {
     const project = await this.findOne(id, user);
+    const results: UploadImageResponseDto[] = [];
 
-    // Upload to S3
-    const uploadResult = await this.s3Service.uploadFile(file, {
-      folder: `projects/${id}/images`,
-      contentType: file.mimetype,
-      metadata: {
-        projectId: id,
-        uploadedBy: user.id,
-        imageType: uploadImageDto.type || 'OTHER',
+    // Upload each file to S3
+    for (const file of files) {
+      const uploadResult = await this.s3Service.uploadFile(file, {
+        folder: `projects/${id}/images`,
+        contentType: file.mimetype,
+        metadata: {
+          projectId: id,
+          uploadedBy: user.id,
+          imageType: uploadImageDto.type || 'OTHER',
+          caption: uploadImageDto.caption || '',
+        },
+      });
+
+      // Create image object with url, type, and caption
+      const imageObject = {
+        url: uploadResult.url,
+        type: uploadImageDto.type || 'OTHER',
         caption: uploadImageDto.caption || '',
-      },
-    });
+      };
 
-    // Update project images array
-    const currentImages = project.images || [];
-    currentImages.push(uploadResult.url);
-    
-    project.images = currentImages;
+      // Add to project images array
+      const currentImages = project.images || [];
+      currentImages.push(imageObject);
+      project.images = currentImages;
+
+      // Add to results
+      results.push({
+        url: uploadResult.url,
+        type: uploadImageDto.type || 'OTHER',
+        caption: uploadImageDto.caption || '',
+        fileSize: uploadResult.fileSize,
+        mimeType: uploadResult.mimeType,
+      });
+    }
+
     await this.projectRepository.save(project);
-
-    return {
-      url: uploadResult.url,
-      type: uploadImageDto.type || 'OTHER',
-      caption: uploadImageDto.caption || '',
-      fileSize: uploadResult.fileSize,
-      mimeType: uploadResult.mimeType,
-    };
+    return results;
   }
 
   async deleteImage(
@@ -319,7 +327,7 @@ export class ProjectService {
   ): Promise<void> {
     const project = await this.findOne(id, user);
 
-    if (!project.images || !project.images.includes(imageUrl)) {
+    if (!project.images || !project.images.some(img => img.url === imageUrl)) {
       throw new NotFoundException('Image not found in project');
     }
 
@@ -331,7 +339,7 @@ export class ProjectService {
     await this.s3Service.deleteFile(s3Key);
 
     // Remove from project images array
-    project.images = project.images.filter(url => url !== imageUrl);
+    project.images = project.images.filter(img => img.url !== imageUrl);
     await this.projectRepository.save(project);
   }
 

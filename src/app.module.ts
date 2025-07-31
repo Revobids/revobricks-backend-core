@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { typeOrmConfig } from './config/typeorm.config';
+import awsConfig from './config/aws.config';
 import { AuthModule } from './auth/auth.module';
 import { RealEstateDeveloperModule } from './modules/real-estate-developer/real-estate-developer.module';
 import { OfficeModule } from './modules/office/office.module';
@@ -17,6 +18,7 @@ import { FirebaseModule } from './config/firebase.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      load: [awsConfig],
     }),
     TypeOrmModule.forRoot(typeOrmConfig),
     FirebaseModule,

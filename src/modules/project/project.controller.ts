@@ -10,18 +10,26 @@ import {
   HttpStatus,
   HttpCode,
   ParseUUIDPipe,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { ProjectService } from './project.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AssignEmployeeDto } from './dto/assign-employee.dto';
 import { PublishProjectDto } from './dto/publish-project.dto';
+import { UploadImageDto, UploadImageResponseDto } from './dto/upload-image.dto';
+import { DeleteImageDto } from './dto/delete-image.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
@@ -137,6 +145,78 @@ export class ProjectController {
     @GetUser() user: RealEstateDeveloperEmployee,
   ): Promise<void> {
     return this.projectService.removeEmployee(id, employeeId, user);
+  }
+
+  @Post(':id/upload-image')
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Upload image file with optional metadata',
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'string',
+          format: 'binary',
+          description: 'Image file to upload (JPEG, PNG, WebP)',
+        },
+        type: {
+          type: 'string',
+          enum: ['EXTERIOR', 'INTERIOR', 'FLOOR_PLAN', 'AMENITY', 'LOCATION', 'CONSTRUCTION', 'OTHER'],
+          description: 'Type of image',
+          default: 'OTHER',
+        },
+        caption: {
+          type: 'string',
+          description: 'Caption for the image',
+        },
+      },
+      required: ['image'],
+    },
+  })
+  @ApiOperation({ summary: 'Upload an image for a project' })
+  @ApiResponse({ status: 201, description: 'Image uploaded successfully', type: UploadImageResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request - invalid file or missing data' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
+  async uploadImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() uploadImageDto: UploadImageDto,
+    @GetUser() user: RealEstateDeveloperEmployee,
+  ): Promise<UploadImageResponseDto> {
+    if (!file) {
+      throw new BadRequestException('No image file provided');
+    }
+
+    // Validate file type
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type. Only JPEG, PNG, and WebP images are allowed');
+    }
+
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size too large. Maximum size is 5MB');
+    }
+
+    return this.projectService.uploadImage(id, file, uploadImageDto, user);
+  }
+
+  @Delete(':id/images')
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete an image from a project' })
+  @ApiResponse({ status: 204, description: 'Image deleted successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - invalid image URL' })
+  @ApiResponse({ status: 404, description: 'Project or image not found' })
+  async deleteImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() deleteImageDto: DeleteImageDto,
+    @GetUser() user: RealEstateDeveloperEmployee,
+  ): Promise<void> {
+    return this.projectService.deleteImage(id, deleteImageDto.imageUrl, user);
   }
 
   @Delete(':id')

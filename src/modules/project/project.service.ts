@@ -21,6 +21,8 @@ import { AssignEmployeeDto } from './dto/assign-employee.dto';
 import { GetProjectsDto } from './dto/get-projects.dto';
 import { Bookmark } from '../../entities/bookmark.entity';
 import { PublishProjectDto } from './dto/publish-project.dto';
+import { UploadImageDto, UploadImageResponseDto } from './dto/upload-image.dto';
+import { S3Service } from '../../services/s3.service';
 
 @Injectable()
 export class ProjectService {
@@ -33,6 +35,7 @@ export class ProjectService {
     private userRepository: Repository<RealEstateDeveloperEmployee>,
     @InjectRepository(Bookmark)
     private bookmarkRepository: Repository<Bookmark>,
+    private s3Service: S3Service,
   ) {}
 
   async create(
@@ -70,8 +73,12 @@ export class ProjectService {
       );
     }
 
+    // Convert ImageDto[] to string[] if images are provided
+    const images = projectData.images?.map(img => img.url) || [];
+
     const project = this.projectRepository.create({
       ...projectData,
+      images, // Use the converted string array
       realEstateDeveloperId: user.realEstateDeveloperId,
       projectManagerId,
       salesManagerId,
@@ -267,6 +274,65 @@ export class ProjectService {
 
     assignment.isActive = false;
     await this.projectEmployeeRepository.save(assignment);
+  }
+
+  async uploadImage(
+    id: string,
+    file: Express.Multer.File,
+    uploadImageDto: UploadImageDto,
+    user: RealEstateDeveloperEmployee,
+  ): Promise<UploadImageResponseDto> {
+    const project = await this.findOne(id, user);
+
+    // Upload to S3
+    const uploadResult = await this.s3Service.uploadFile(file, {
+      folder: `projects/${id}/images`,
+      contentType: file.mimetype,
+      metadata: {
+        projectId: id,
+        uploadedBy: user.id,
+        imageType: uploadImageDto.type || 'OTHER',
+        caption: uploadImageDto.caption || '',
+      },
+    });
+
+    // Update project images array
+    const currentImages = project.images || [];
+    currentImages.push(uploadResult.url);
+    
+    project.images = currentImages;
+    await this.projectRepository.save(project);
+
+    return {
+      url: uploadResult.url,
+      type: uploadImageDto.type || 'OTHER',
+      caption: uploadImageDto.caption || '',
+      fileSize: uploadResult.fileSize,
+      mimeType: uploadResult.mimeType,
+    };
+  }
+
+  async deleteImage(
+    id: string,
+    imageUrl: string,
+    user: RealEstateDeveloperEmployee,
+  ): Promise<void> {
+    const project = await this.findOne(id, user);
+
+    if (!project.images || !project.images.includes(imageUrl)) {
+      throw new NotFoundException('Image not found in project');
+    }
+
+    // Extract S3 key from URL
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
+    const s3Key = imageUrl.replace(`https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/`, '');
+
+    // Delete from S3
+    await this.s3Service.deleteFile(s3Key);
+
+    // Remove from project images array
+    project.images = project.images.filter(url => url !== imageUrl);
+    await this.projectRepository.save(project);
   }
 
   async remove(id: string, user: RealEstateDeveloperEmployee): Promise<void> {

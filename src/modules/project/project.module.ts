@@ -7,6 +7,7 @@ import { Project } from '../../entities/project.entity';
 import { ProjectEmployee } from '../../entities/project-employee.entity';
 import { RealEstateDeveloperEmployee } from '../../entities/real-estate-developer-employee.entity';
 import { Bookmark } from '../../entities/bookmark.entity';
+import { S3Service } from '../../services/s3.service';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { Bookmark } from '../../entities/bookmark.entity';
     ]),
   ],
   controllers: [ProjectController, PublicProjectController],
-  providers: [ProjectService],
+  providers: [ProjectService, S3Service],
   exports: [ProjectService],
 })
 export class ProjectModule {}

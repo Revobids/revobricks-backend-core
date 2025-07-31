@@ -174,7 +174,7 @@ const response = await fetch(`/projects/${projectId}/images`, {
 
 ### 403 Forbidden
 
-- User doesn't have permission (only ADMIN and MANAGER roles can upload)
+- User doesn't have permission (only ADMIN role can upload and delete images)
 
 ### 404 Not Found
 

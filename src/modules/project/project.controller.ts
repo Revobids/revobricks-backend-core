@@ -150,7 +150,7 @@ export class ProjectController {
   }
 
   @Post(':id/upload-images')
-  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @Roles(UserRole.ADMIN)
   @UseInterceptors(FilesInterceptor('images', 10)) // Allow up to 10 files
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -180,7 +180,7 @@ export class ProjectController {
       required: ['images'],
     },
   })
-  @ApiOperation({ summary: 'Upload multiple images for a project' })
+  @ApiOperation({ summary: 'Upload multiple images for a project (ADMIN only)' })
   @ApiResponse({ status: 201, description: 'Images uploaded successfully', type: [UploadImageResponseDto] })
   @ApiResponse({ status: 400, description: 'Bad request - invalid files or missing data' })
   @ApiResponse({ status: 404, description: 'Project not found' })
@@ -211,8 +211,8 @@ export class ProjectController {
   }
 
   @Delete(':id/images')
-  @Roles(UserRole.ADMIN, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Delete an image from a project' })
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete an image from a project (ADMIN only)' })
   @ApiResponse({ status: 200, description: 'Image deleted successfully', type: DeleteImageResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request - invalid image URL' })
   @ApiResponse({ status: 404, description: 'Project or image not found' })

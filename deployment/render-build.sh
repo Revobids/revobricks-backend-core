@@ -3,9 +3,9 @@ set -e  # Exit on any error
 
 echo "Starting build process..."
 
-# Install dependencies
+# Install dependencies (including devDependencies for build)
 echo "Installing dependencies..."
-npm ci
+npm ci --include=dev
 
 # Clean and build
 echo "Building application..."

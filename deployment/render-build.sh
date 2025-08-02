@@ -26,4 +26,8 @@ echo "Build verification successful!"
 echo "Contents of dist folder:"
 ls -la dist/
 
+# Sync database schema
+echo "Syncing database schema..."
+npm run db:sync
+
 echo "Build completed successfully!"

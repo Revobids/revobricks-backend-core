@@ -9,9 +9,14 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for all origins
+  // Enable CORS for specific origins
   app.enableCors({
-    origin: true,
+    origin: [
+      'https://revobrix-marketplace-web-oqoy.vercel.app',
+      'https://www.revobrix.com',
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,

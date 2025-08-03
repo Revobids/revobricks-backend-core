@@ -14,6 +14,7 @@ async function bootstrap() {
     origin: [
       'https://revobrix-marketplace-web-oqoy.vercel.app',
       'https://www.revobrix.com',
+      'https://developer.revobrix.com',
       'http://localhost:3000',
       'http://localhost:3001',
     ],

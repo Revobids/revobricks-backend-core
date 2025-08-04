@@ -28,7 +28,7 @@
 ## Project setup
 
 ```bash
-$ npm install
+$ npm install  revorbix!
 ```
 
 ## Compile and run the project

@@ -15,13 +15,17 @@ async function bootstrap() {
       'https://revobrix-marketplace-web-oqoy.vercel.app',
       'https://www.revobrix.com',
       'https://developer.revobrix.com',
+      'https://console.revobrix.com',
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://localhost:3002',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
+
+  app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
     new ValidationPipe({

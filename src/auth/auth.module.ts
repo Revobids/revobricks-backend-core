@@ -2,8 +2,9 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { RealEstateDeveloperEmployee } from '../entities';
+import { RealEstateDeveloperEmployee, User } from '../entities';
 import { JwtStrategy } from './jwt.strategy';
+import { UserJwtStrategy } from './user-jwt.strategy';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 
@@ -18,10 +19,10 @@ import { AuthController } from './auth.controller';
         expiresIn: process.env.JWT_EXPIRATION || '24h',
       },
     }),
-    TypeOrmModule.forFeature([RealEstateDeveloperEmployee]),
+    TypeOrmModule.forFeature([RealEstateDeveloperEmployee, User]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [JwtStrategy, PassportModule, AuthService],
+  providers: [AuthService, JwtStrategy, UserJwtStrategy],
+  exports: [JwtStrategy, UserJwtStrategy, PassportModule, AuthService],
 })
 export class AuthModule {}

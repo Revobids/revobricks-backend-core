@@ -10,6 +10,7 @@ import {
   RealEstateDeveloper,
   RealEstateDeveloperEmployee,
   Office,
+  Project,
 } from '../../entities';
 import {
   CreateRealEstateDeveloperDto,
@@ -26,6 +27,8 @@ export class RealEstateDeveloperService {
     private employeeRepository: Repository<RealEstateDeveloperEmployee>,
     @InjectRepository(Office)
     private officeRepository: Repository<Office>,
+    @InjectRepository(Project)
+    private projectRepository: Repository<Project>,
   ) {}
 
   async create(
@@ -93,21 +96,43 @@ export class RealEstateDeveloperService {
 
   async findAll(): Promise<RealEstateDeveloper[]> {
     return this.developerRepository.find({
-      relations: ['offices', 'users'],
+      relations: ['offices', 'employees'],
     });
   }
 
   async findOne(id: string): Promise<RealEstateDeveloper> {
     const developer = await this.developerRepository.findOne({
       where: { id },
-      relations: ['offices', 'users'],
+      relations: ['offices', 'employees', 'employees.office'],
     });
 
     if (!developer) {
       throw new NotFoundException('Real estate developer not found');
     }
 
-    return developer;
+    // Get associated projects
+    const projects = await this.projectRepository.find({
+      where: { realEstateDeveloperId: id },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        address: true,
+        city: true,
+        state: true,
+        status: true,
+        projectType: true,
+        propertyType: true,
+        totalUnits: true,
+        expectedCompletionDate: true,
+        constructionStartDate: true,
+      },
+    });
+
+    return {
+      ...developer,
+      projects,
+    } as any;
   }
 
   async update(

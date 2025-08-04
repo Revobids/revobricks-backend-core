@@ -6,6 +6,7 @@ import {
   RealEstateDeveloper,
   RealEstateDeveloperEmployee,
   Office,
+  Project,
 } from '../../entities';
 
 @Module({
@@ -14,6 +15,7 @@ import {
       RealEstateDeveloper,
       RealEstateDeveloperEmployee,
       Office,
+      Project,
     ]),
   ],
   controllers: [RealEstateDeveloperController],

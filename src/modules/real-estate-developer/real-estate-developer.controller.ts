@@ -20,10 +20,7 @@ import {
   CreateRealEstateDeveloperDto,
   UpdateRealEstateDeveloperDto,
 } from '../../dto/real-estate-developer.dto';
-import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
-import { RolesGuard } from '../../guards/roles.guard';
-import { Roles } from '../../decorators/roles.decorator';
-import { UserRole } from '../../entities/real-estate-developer-employee.entity';
+import { UserJwtAuthGuard } from '../../guards/user-jwt-auth.guard';
 
 @ApiTags('Real Estate Developers')
 @Controller('real-estate-developers')
@@ -31,6 +28,8 @@ export class RealEstateDeveloperController {
   constructor(private readonly developerService: RealEstateDeveloperService) {}
 
   @Post()
+  @UseGuards(UserJwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new real estate developer' })
   @ApiResponse({ status: 201, description: 'Developer successfully created' })
   @ApiResponse({ status: 409, description: 'Developer already exists' })
@@ -39,7 +38,7 @@ export class RealEstateDeveloperController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(UserJwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all real estate developers' })
   @ApiResponse({ status: 200, description: 'List of all developers' })
@@ -48,7 +47,7 @@ export class RealEstateDeveloperController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(UserJwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a real estate developer by id' })
   @ApiResponse({ status: 200, description: 'Developer found' })
@@ -58,8 +57,7 @@ export class RealEstateDeveloperController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(UserJwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a real estate developer' })
   @ApiResponse({ status: 200, description: 'Developer successfully updated' })
@@ -72,8 +70,7 @@ export class RealEstateDeveloperController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(UserJwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a real estate developer' })
   @ApiResponse({ status: 200, description: 'Developer successfully deleted' })

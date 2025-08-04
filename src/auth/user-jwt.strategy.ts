@@ -19,12 +19,18 @@ export class UserJwtStrategy extends PassportStrategy(Strategy, 'user-jwt') {
   }
 
   async validate(payload: any) {
+    console.log('UserJwtStrategy - validating payload:', payload);
     const { sub: userId } = payload;
+    console.log('UserJwtStrategy - looking for user with id:', userId);
+    
     const user = await this.userRepository.findOne({
       where: { id: userId, isActive: true },
     });
 
+    console.log('UserJwtStrategy - found user:', user ? { id: user.id, isAdmin: user.isAdmin, isActive: user.isActive } : 'null');
+
     if (!user) {
+      console.log('UserJwtStrategy - user not found, throwing UnauthorizedException');
       throw new UnauthorizedException();
     }
 

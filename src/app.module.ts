@@ -13,6 +13,7 @@ import { ProjectModule } from './modules/project/project.module';
 import { UserAuthModule } from './modules/user-auth/user-auth.module';
 import { BookmarkModule } from './modules/bookmark/bookmark.module';
 import { FirebaseModule } from './config/firebase.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { FirebaseModule } from './config/firebase.module';
     ProjectModule,
     UserAuthModule,
     BookmarkModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -16,6 +16,8 @@ async function bootstrap() {
       'https://www.revobrix.com',
       'https://developer.revobrix.com',
       'https://console.revobrix.com',
+      'https://backend-core-production-cbc1.up.railway.app',
+      'https://revobricks-backend-core.onrender.com',
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:3002',

@@ -1,1 +1,0 @@
-{"version":3,"file":"delete-image.dto.js","sourceRoot":"","sources":["../../../../src/modules/project/dto/delete-image.dto.ts"],"names":[],"mappings":";;;;;;;;;;;;AAAA,qDAAuD;AACvD,6CAA8C;AAE9C,MAAa,cAAc;IAOzB,QAAQ,CAAS;CAClB;AARD,wCAQC;AADC;IANC,IAAA,qBAAW,EAAC;QACX,WAAW,EAAE,4BAA4B;QACzC,OAAO,EAAE,oFAAoF;KAC9F,CAAC;IACD,IAAA,0BAAQ,GAAE;IACV,IAAA,4BAAU,GAAE;;gDACI"}

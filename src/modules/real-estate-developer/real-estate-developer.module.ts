@@ -8,6 +8,7 @@ import {
   Office,
   Project,
 } from '../../entities';
+import { ServicesModule } from '../../services/services.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import {
       Office,
       Project,
     ]),
+    ServicesModule,
   ],
   controllers: [RealEstateDeveloperController],
   providers: [RealEstateDeveloperService],

@@ -17,6 +17,8 @@ import {
   UpdateRealEstateDeveloperDto,
 } from '../../dto/real-estate-developer.dto';
 import { UserRole } from '../../entities/real-estate-developer-employee.entity';
+import { S3Service } from '../../services/s3.service';
+import { UploadLogoResponseDto } from './dto/upload-logo.dto';
 
 @Injectable()
 export class RealEstateDeveloperService {
@@ -29,6 +31,7 @@ export class RealEstateDeveloperService {
     private officeRepository: Repository<Office>,
     @InjectRepository(Project)
     private projectRepository: Repository<Project>,
+    private s3Service: S3Service,
   ) {}
 
   async create(
@@ -149,5 +152,43 @@ export class RealEstateDeveloperService {
     const developer = await this.findOne(id);
     developer.isActive = false;
     await this.developerRepository.save(developer);
+  }
+
+  async uploadLogo(
+    developerId: string,
+    file: Express.Multer.File,
+  ): Promise<UploadLogoResponseDto> {
+    const developer = await this.findOne(developerId);
+
+    // Delete existing logo if it exists
+    if (developer.logoUrl) {
+      try {
+        const existingKey = developer.logoUrl.split('/').slice(-3).join('/');
+        await this.s3Service.deleteFile(existingKey);
+      } catch (error) {
+        console.warn('Failed to delete existing logo:', error);
+      }
+    }
+
+    // Upload new logo to S3
+    const uploadResult = await this.s3Service.uploadFile(file, {
+      folder: `logos/developers/${developerId}`,
+      contentType: file.mimetype,
+      metadata: {
+        developerId,
+        uploadType: 'logo',
+      },
+    });
+
+    // Update developer with new logo URL
+    developer.logoUrl = uploadResult.cdnUrl || uploadResult.url;
+    await this.developerRepository.save(developer);
+
+    return {
+      url: developer.logoUrl,
+      fileSize: uploadResult.fileSize,
+      mimeType: uploadResult.mimeType,
+      developerId,
+    };
   }
 }

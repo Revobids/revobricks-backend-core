@@ -29,6 +29,9 @@ export class RealEstateDeveloper {
   @Column({ nullable: true })
   email: string;
 
+  @Column({ nullable: true })
+  logoUrl: string;
+
   @Column({ default: true })
   isActive: boolean;
 

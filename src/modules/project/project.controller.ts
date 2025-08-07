@@ -66,7 +66,9 @@ export class ProjectController {
   @Get()
   @ApiOperation({ summary: 'Get all projects for the organization' })
   @ApiResponse({ status: 200, description: 'List of projects' })
-  async findAll(@GetUser() user: RealEstateDeveloperEmployee): Promise<Project[]> {
+  async findAll(
+    @GetUser() user: RealEstateDeveloperEmployee,
+  ): Promise<Project[]> {
     return this.projectService.findAll(user);
   }
 
@@ -168,21 +170,39 @@ export class ProjectController {
         },
         type: {
           type: 'string',
-          enum: ['EXTERIOR', 'INTERIOR', 'FLOOR_PLAN', 'AMENITY', 'LOCATION', 'CONSTRUCTION', 'OTHER'],
+          enum: [
+            'EXTERIOR',
+            'INTERIOR',
+            'FLOOR_PLAN',
+            'AMENITY',
+            'LOCATION',
+            'CONSTRUCTION',
+            'OTHER',
+          ],
           description: 'Type of images (applies to all uploaded images)',
           default: 'OTHER',
         },
         caption: {
           type: 'string',
-          description: 'Caption for the images (applies to all uploaded images)',
+          description:
+            'Caption for the images (applies to all uploaded images)',
         },
       },
       required: ['images'],
     },
   })
-  @ApiOperation({ summary: 'Upload multiple images for a project (ADMIN only)' })
-  @ApiResponse({ status: 201, description: 'Images uploaded successfully', type: [UploadImageResponseDto] })
-  @ApiResponse({ status: 400, description: 'Bad request - invalid files or missing data' })
+  @ApiOperation({
+    summary: 'Upload multiple images for a project (ADMIN only)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Images uploaded successfully',
+    type: [UploadImageResponseDto],
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - invalid files or missing data',
+  })
   @ApiResponse({ status: 404, description: 'Project not found' })
   async uploadImages(
     @Param('id', ParseUUIDPipe) id: string,
@@ -195,15 +215,24 @@ export class ProjectController {
     }
 
     // Validate each file
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+    ];
     const maxSize = 5 * 1024 * 1024; // 5MB
 
     for (const file of files) {
       if (!allowedMimeTypes.includes(file.mimetype)) {
-        throw new BadRequestException(`Invalid file type for ${file.originalname}. Only JPEG, PNG, and WebP images are allowed`);
+        throw new BadRequestException(
+          `Invalid file type for ${file.originalname}. Only JPEG, PNG, and WebP images are allowed`,
+        );
       }
       if (file.size > maxSize) {
-        throw new BadRequestException(`File ${file.originalname} is too large. Maximum size is 5MB`);
+        throw new BadRequestException(
+          `File ${file.originalname} is too large. Maximum size is 5MB`,
+        );
       }
     }
 
@@ -213,7 +242,11 @@ export class ProjectController {
   @Delete(':id/images')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete an image from a project (ADMIN only)' })
-  @ApiResponse({ status: 200, description: 'Image deleted successfully', type: DeleteImageResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Image deleted successfully',
+    type: DeleteImageResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Bad request - invalid image URL' })
   @ApiResponse({ status: 404, description: 'Project or image not found' })
   async deleteImage(

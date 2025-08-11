@@ -23,7 +23,13 @@ import { Bookmark } from '../../entities/bookmark.entity';
 import { PublishProjectDto } from './dto/publish-project.dto';
 import { UploadImageDto, UploadImageResponseDto } from './dto/upload-image.dto';
 import { DeleteImageResponseDto } from './dto/delete-image-response.dto';
+import { SearchProjectsDto } from './dto/search-projects.dto';
 import { S3Service } from '../../services/s3.service';
+// Simple fuzzy search utility
+interface SearchResult<T> {
+  item: T;
+  score: number;
+}
 
 @Injectable()
 export class ProjectService {
@@ -438,5 +444,152 @@ export class ProjectService {
       ...project,
       isBookmarked: !!bookmark,
     };
+  }
+
+  // Simple fuzzy search utility methods
+  private calculateLevenshteinDistance(str1: string, str2: string): number {
+    const matrix: number[][] = [];
+    const len1 = str1.length;
+    const len2 = str2.length;
+
+    for (let i = 0; i <= len2; i++) {
+      matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= len1; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= len2; i++) {
+      for (let j = 1; j <= len1; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+
+    return matrix[len2][len1];
+  }
+
+  private calculateSimilarity(str1: string, str2: string): number {
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const distance = this.calculateLevenshteinDistance(longer, shorter);
+    return (longer.length - distance) / longer.length;
+  }
+
+  private fuzzyMatch(searchTerm: string, text: string, threshold: number = 0.3): boolean {
+    if (!searchTerm || !text) return false;
+    
+    const searchLower = searchTerm.toLowerCase();
+    const textLower = text.toLowerCase();
+    
+    // Exact match
+    if (textLower.includes(searchLower)) return true;
+    
+    // Split search term into words for partial matching
+    const searchWords = searchLower.split(' ').filter(word => word.length > 0);
+    
+    for (const word of searchWords) {
+      // Check if any word has good similarity
+      const words = textLower.split(' ');
+      for (const textWord of words) {
+        if (this.calculateSimilarity(word, textWord) >= (1 - threshold)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  private scoreProject(project: Project, searchDto: SearchProjectsDto): number {
+    let score = 0;
+    const threshold = searchDto.threshold || 0.3;
+
+    // General query scoring
+    if (searchDto.query) {
+      const query = searchDto.query.toLowerCase();
+      
+      if (this.fuzzyMatch(query, project.name || '', threshold)) score += 30;
+      if (this.fuzzyMatch(query, project.description || '', threshold)) score += 20;
+      if (this.fuzzyMatch(query, project.city || '', threshold)) score += 20;
+      if (this.fuzzyMatch(query, project.state || '', threshold)) score += 15;
+      if (this.fuzzyMatch(query, project.address || '', threshold)) score += 10;
+      if (this.fuzzyMatch(query, project.realEstateDeveloper?.name || '', threshold)) score += 25;
+    }
+
+    // Location-specific scoring
+    if (searchDto.location) {
+      const location = searchDto.location.toLowerCase();
+      
+      if (this.fuzzyMatch(location, project.city || '', threshold)) score += 40;
+      if (this.fuzzyMatch(location, project.state || '', threshold)) score += 30;
+      if (this.fuzzyMatch(location, project.address || '', threshold)) score += 30;
+    }
+
+    // Developer-specific scoring
+    if (searchDto.developer) {
+      const developer = searchDto.developer.toLowerCase();
+      
+      if (this.fuzzyMatch(developer, project.realEstateDeveloper?.name || '', threshold)) score += 100;
+    }
+
+    return score;
+  }
+
+  async searchPublishedProjects(searchDto: SearchProjectsDto): Promise<Project[]> {
+    // Get all published projects with developer info
+    const allProjects = await this.projectRepository.find({
+      where: {
+        status: ProjectStatus.PUBLISHED,
+        isActive: true,
+      },
+      relations: ['realEstateDeveloper'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    // If no search parameters, return all projects with limit
+    if (!searchDto.query && !searchDto.location && !searchDto.developer) {
+      return allProjects.slice(0, searchDto.limit || 20);
+    }
+
+    // Score and filter projects
+    const scoredProjects: SearchResult<Project>[] = allProjects
+      .map(project => ({
+        item: project,
+        score: this.scoreProject(project, searchDto)
+      }))
+      .filter(result => result.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    // Return limited results
+    return scoredProjects
+      .slice(0, searchDto.limit || 20)
+      .map(result => result.item);
+  }
+
+  // Convenience methods for common search patterns
+  async searchByLocation(location: string, limit: number = 20): Promise<Project[]> {
+    return this.searchPublishedProjects({ location, limit });
+  }
+
+  async searchByDeveloper(developer: string, limit: number = 20): Promise<Project[]> {
+    return this.searchPublishedProjects({ developer, limit });
+  }
+
+  async quickSearch(query: string, limit: number = 20): Promise<Project[]> {
+    return this.searchPublishedProjects({ query, limit });
   }
 }

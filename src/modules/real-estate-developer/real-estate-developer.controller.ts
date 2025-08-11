@@ -8,19 +8,26 @@ import {
   Delete,
   UseGuards,
   ValidationPipe,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { RealEstateDeveloperService } from './real-estate-developer.service';
 import {
   CreateRealEstateDeveloperDto,
   UpdateRealEstateDeveloperDto,
 } from '../../dto/real-estate-developer.dto';
 import { UserJwtAuthGuard } from '../../guards/user-jwt-auth.guard';
+import { UploadLogoResponseDto } from './dto/upload-logo.dto';
 
 @ApiTags('Real Estate Developers')
 @Controller('real-estate-developers')
@@ -77,5 +84,63 @@ export class RealEstateDeveloperController {
   @ApiResponse({ status: 404, description: 'Developer not found' })
   remove(@Param('id') id: string) {
     return this.developerService.remove(id);
+  }
+
+  @Post(':id/upload-logo')
+  @UseGuards(UserJwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('logo'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload logo for a real estate developer' })
+  @ApiBody({
+    description: 'Logo image file',
+    type: 'multipart/form-data',
+    schema: {
+      type: 'object',
+      properties: {
+        logo: {
+          type: 'string',
+          format: 'binary',
+          description: 'Logo image file (JPEG, PNG, GIF, WebP)',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Logo uploaded successfully',
+    type: UploadLogoResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid file or missing file' })
+  @ApiResponse({ status: 404, description: 'Developer not found' })
+  async uploadLogo(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<UploadLogoResponseDto> {
+    if (!file) {
+      throw new BadRequestException('Logo file is required');
+    }
+
+    // Validate file type
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed',
+      );
+    }
+
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size must be less than 5MB');
+    }
+
+    return this.developerService.uploadLogo(id, file);
   }
 }

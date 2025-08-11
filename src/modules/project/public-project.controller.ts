@@ -1,61 +1,64 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
   Query,
   Param,
   ParseUUIDPipe,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiQuery,
-  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ProjectService } from './project.service';
-import { Project } from '../../entities/project.entity';
+import { SearchProjectsDto } from './dto/search-projects.dto';
 import { GetProjectsDto } from './dto/get-projects.dto';
-import { UserJwtAuthGuard } from '../../guards/user-jwt-auth.guard';
-import { GetUser } from '../../decorators/get-user.decorator';
-import { User } from '../../entities/user.entity';
+import { Project } from '../../entities/project.entity';
 
-@ApiTags('public/projects')
+@ApiTags('public-projects')
 @Controller('public/projects')
 export class PublicProjectController {
   constructor(private readonly projectService: ProjectService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all published projects with optional filters' })
+  @ApiOperation({ summary: 'Get all published projects (public)' })
   @ApiResponse({ status: 200, description: 'List of published projects' })
-  @ApiQuery({ name: 'city', required: false, description: 'Filter by city' })
-  @ApiQuery({ name: 'state', required: false, description: 'Filter by state' })
-  @ApiQuery({ name: 'minPrice', required: false, type: Number })
-  @ApiQuery({ name: 'maxPrice', required: false, type: Number })
-  @ApiQuery({ name: 'projectType', required: false, enum: ['RESIDENTIAL', 'COMMERCIAL', 'MIXED_USE'] })
-  @ApiQuery({ name: 'propertyType', required: false, enum: ['APARTMENT', 'VILLA', 'PLOT', 'OFFICE', 'SHOP', 'WAREHOUSE'] })
-  async getProjects(@Query() query: GetProjectsDto): Promise<Project[]> {
-    return this.projectService.getPublishedProjectsWithFilters(query);
+  async getPublishedProjects(@Query() filters: GetProjectsDto): Promise<Project[]> {
+    if (Object.keys(filters).length > 0) {
+      return this.projectService.getPublishedProjectsWithFilters(filters);
+    }
+    return this.projectService.getPublishedProjects();
+  }
+
+  @Post('search')
+  @ApiOperation({ summary: 'Search published projects with fuzzy matching (public)' })
+  @ApiResponse({ status: 200, description: 'Search results' })
+  @ApiResponse({ status: 400, description: 'Invalid search parameters' })
+  async searchProjects(
+    @Body() searchDto: SearchProjectsDto,
+  ): Promise<Project[]> {
+    return this.projectService.searchPublishedProjects(searchDto);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Search published projects with query parameters (public)' })
+  @ApiResponse({ status: 200, description: 'Search results' })
+  @ApiResponse({ status: 400, description: 'Invalid search parameters' })
+  async searchProjectsGet(
+    @Query() searchDto: SearchProjectsDto,
+  ): Promise<Project[]> {
+    return this.projectService.searchPublishedProjects(searchDto);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a published project by ID' })
-  @ApiResponse({ status: 200, description: 'Project details' })
+  @ApiOperation({ summary: 'Get a published project by ID (public)' })
+  @ApiResponse({ status: 200, description: 'Project found' })
   @ApiResponse({ status: 404, description: 'Project not found or not published' })
-  async getProject(@Param('id', ParseUUIDPipe) id: string): Promise<Project> {
-    return this.projectService.getPublishedProjectById(id);
-  }
-
-  @Get(':id/with-bookmark')
-  @UseGuards(UserJwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get a published project with bookmark status' })
-  @ApiResponse({ status: 200, description: 'Project details with bookmark status' })
-  @ApiResponse({ status: 404, description: 'Project not found or not published' })
-  async getProjectWithBookmark(
+  async getPublishedProject(
     @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: User,
-  ): Promise<Project & { isBookmarked: boolean }> {
-    return this.projectService.getPublishedProjectWithBookmark(id, user.id);
+  ): Promise<Project> {
+    return this.projectService.getPublishedProjectById(id);
   }
 }

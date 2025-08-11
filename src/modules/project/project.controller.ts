@@ -32,6 +32,7 @@ import { PublishProjectDto } from './dto/publish-project.dto';
 import { UploadImageDto, UploadImageResponseDto } from './dto/upload-image.dto';
 import { DeleteImageDto } from './dto/delete-image.dto';
 import { DeleteImageResponseDto } from './dto/delete-image-response.dto';
+import { SearchProjectsDto } from './dto/search-projects.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';

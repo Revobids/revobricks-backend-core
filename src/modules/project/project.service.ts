@@ -377,6 +377,19 @@ export class ProjectService {
     });
   }
 
+  async getProjectsByDeveloper(developerId: string): Promise<Project[]> {
+    return this.projectRepository.find({
+      where: {
+        realEstateDeveloperId: developerId,
+        isActive: true,
+      },
+      relations: ['projectManager', 'salesManager'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
   async getPublishedProjectsWithFilters(filters: GetProjectsDto): Promise<Project[]> {
     const query = this.projectRepository.createQueryBuilder('project')
       .leftJoinAndSelect('project.realEstateDeveloper', 'developer')

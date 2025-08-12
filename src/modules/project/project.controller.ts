@@ -80,6 +80,15 @@ export class ProjectController {
     return this.projectService.getPublishedProjects();
   }
 
+  @Get('developer/:developerId')
+  @ApiOperation({ summary: 'Get projects by developer ID' })
+  @ApiResponse({ status: 200, description: 'List of projects by developer' })
+  async getProjectsByDeveloper(
+    @Param('developerId', ParseUUIDPipe) developerId: string,
+  ): Promise<Project[]> {
+    return this.projectService.getProjectsByDeveloper(developerId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a project by ID' })
   @ApiResponse({ status: 200, description: 'Project found' })

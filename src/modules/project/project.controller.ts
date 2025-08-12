@@ -11,11 +11,11 @@ import {
   HttpCode,
   ParseUUIDPipe,
   UseInterceptors,
-  UploadedFile,
   UploadedFiles,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -25,6 +25,10 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { ProjectService } from './project.service';
+import {
+  NearbyFacilitiesService,
+  Facility,
+} from '../../services/nearby-facilities.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AssignEmployeeDto } from './dto/assign-employee.dto';
@@ -32,7 +36,7 @@ import { PublishProjectDto } from './dto/publish-project.dto';
 import { UploadImageDto, UploadImageResponseDto } from './dto/upload-image.dto';
 import { DeleteImageDto } from './dto/delete-image.dto';
 import { DeleteImageResponseDto } from './dto/delete-image-response.dto';
-import { SearchProjectsDto } from './dto/search-projects.dto';
+
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
@@ -49,7 +53,10 @@ import { ProjectEmployee } from '../../entities/project-employee.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(
+    private readonly projectService: ProjectService,
+    private readonly nearbyFacilitiesService: NearbyFacilitiesService,
+  ) {}
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
@@ -87,6 +94,42 @@ export class ProjectController {
     @Param('developerId', ParseUUIDPipe) developerId: string,
   ): Promise<Project[]> {
     return this.projectService.getProjectsByDeveloper(developerId);
+  }
+
+  @Get(':id/nearby-facilities')
+  @ApiOperation({ summary: 'Get nearby facilities for a project' })
+  @ApiResponse({ status: 200, description: 'List of nearby facilities' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
+  async getNearbyFacilities(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RealEstateDeveloperEmployee,
+    @Query('radius') radius?: number,
+    @Query('type') type?: string,
+  ): Promise<Facility[]> {
+    const project = await this.projectService.findOne(id, user);
+    return this.nearbyFacilitiesService.getNearbyFacilities(
+      project.latitude,
+      project.longitude,
+      radius || 5000,
+      type || 'school',
+    );
+  }
+
+  @Get(':id/closest-facilities')
+  @ApiOperation({ summary: 'Get the closest facility of each type for a project (within 5km)' })
+  @ApiResponse({ status: 200, description: 'List of closest facilities by type' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
+  async getClosestFacilitiesByType(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RealEstateDeveloperEmployee,
+  ): Promise<Facility[]> {
+    const project = await this.projectService.findOne(id, user);
+    
+    return this.nearbyFacilitiesService.getClosestFacilitiesByType(
+      project.latitude,
+      project.longitude,
+      5000, // Fixed 5km radius
+    );
   }
 
   @Get(':id')

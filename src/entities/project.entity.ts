@@ -149,10 +149,10 @@ export class Project {
   }[];
 
   @Column({ type: 'json', nullable: true })
-  brochures: {
+  brochure: {
     url: string;
     name: string;
-  }[];
+  } | null;
 
   @Column({ type: 'uuid' })
   realEstateDeveloperId: string;

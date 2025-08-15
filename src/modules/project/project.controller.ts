@@ -11,11 +11,11 @@ import {
   HttpCode,
   ParseUUIDPipe,
   UseInterceptors,
-  UploadedFile,
   UploadedFiles,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -25,6 +25,10 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { ProjectService } from './project.service';
+import {
+  NearbyFacilitiesService,
+  Facility,
+} from '../../services/nearby-facilities.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AssignEmployeeDto } from './dto/assign-employee.dto';
@@ -32,7 +36,15 @@ import { PublishProjectDto } from './dto/publish-project.dto';
 import { UploadImageDto, UploadImageResponseDto } from './dto/upload-image.dto';
 import { DeleteImageDto } from './dto/delete-image.dto';
 import { DeleteImageResponseDto } from './dto/delete-image-response.dto';
-import { SearchProjectsDto } from './dto/search-projects.dto';
+import {
+  UploadBrochureDto,
+  UploadBrochureResponseDto,
+} from './dto/upload-brochure.dto';
+import {
+  DeleteBrochureDto,
+  DeleteBrochureResponseDto,
+} from './dto/delete-brochure.dto';
+
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
@@ -49,7 +61,10 @@ import { ProjectEmployee } from '../../entities/project-employee.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(
+    private readonly projectService: ProjectService,
+    private readonly nearbyFacilitiesService: NearbyFacilitiesService,
+  ) {}
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
@@ -78,6 +93,56 @@ export class ProjectController {
   @ApiResponse({ status: 200, description: 'List of published projects' })
   async getPublishedProjects(): Promise<Project[]> {
     return this.projectService.getPublishedProjects();
+  }
+
+  @Get('developer/:developerId')
+  @ApiOperation({ summary: 'Get projects by developer ID' })
+  @ApiResponse({ status: 200, description: 'List of projects by developer' })
+  async getProjectsByDeveloper(
+    @Param('developerId', ParseUUIDPipe) developerId: string,
+  ): Promise<Project[]> {
+    return this.projectService.getProjectsByDeveloper(developerId);
+  }
+
+  @Get(':id/nearby-facilities')
+  @ApiOperation({ summary: 'Get nearby facilities for a project' })
+  @ApiResponse({ status: 200, description: 'List of nearby facilities' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
+  async getNearbyFacilities(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RealEstateDeveloperEmployee,
+    @Query('radius') radius?: number,
+    @Query('type') type?: string,
+  ): Promise<Facility[]> {
+    const project = await this.projectService.findOne(id, user);
+    return this.nearbyFacilitiesService.getNearbyFacilities(
+      project.latitude,
+      project.longitude,
+      radius || 5000,
+      type || 'school',
+    );
+  }
+
+  @Get(':id/closest-facilities')
+  @ApiOperation({
+    summary: 'Get the closest facility of each type for a project (within 5km)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of closest facilities by type',
+  })
+  @ApiResponse({ status: 404, description: 'Project not found' })
+  async getClosestFacilitiesByType(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RealEstateDeveloperEmployee,
+  ): Promise<Facility[]> {
+    const project = await this.projectService.findOne(id, user);
+
+    return this.nearbyFacilitiesService.getClosestFacilitiesByType(
+      project.latitude,
+      project.longitude,
+      5000, // Fixed 5km radius
+    );
   }
 
   @Get(':id')
@@ -238,6 +303,102 @@ export class ProjectController {
     }
 
     return this.projectService.uploadImages(id, files, uploadImageDto, user);
+  }
+
+  @Post(':id/upload-brochure')
+  @Roles(UserRole.ADMIN)
+  @UseInterceptors(FilesInterceptor('brochure', 1)) // Allow only 1 PDF file
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Upload a PDF brochure for the project',
+    schema: {
+      type: 'object',
+      properties: {
+        brochure: {
+          type: 'string',
+          format: 'binary',
+          description: 'PDF brochure file to upload',
+        },
+        name: {
+          type: 'string',
+          description: 'Name for the brochure (optional)',
+          example: 'Project Brochure 2024',
+        },
+      },
+      required: ['brochure'],
+    },
+  })
+  @ApiOperation({
+    summary: 'Upload a PDF brochure for a project (ADMIN only)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Brochure uploaded successfully',
+    type: UploadBrochureResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - invalid file or missing data',
+  })
+  @ApiResponse({ status: 404, description: 'Project not found' })
+  async uploadBrochure(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() uploadBrochureDto: UploadBrochureDto,
+    @GetUser() user: RealEstateDeveloperEmployee,
+  ): Promise<UploadBrochureResponseDto> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No brochure file provided');
+    }
+
+    const file = files[0];
+
+    // Validate file type - only PDF allowed
+    if (file.mimetype !== 'application/pdf') {
+      throw new BadRequestException(
+        'Invalid file type. Only PDF files are allowed for brochures',
+      );
+    }
+
+    // Validate file size - max 10MB for PDFs
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      throw new BadRequestException(
+        'File is too large. Maximum size is 10MB for brochures',
+      );
+    }
+
+    return this.projectService.uploadBrochure(
+      id,
+      file,
+      uploadBrochureDto,
+      user,
+    );
+  }
+
+  @Delete(':id/brochures')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete a brochure from a project (ADMIN only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Brochure deleted successfully',
+    type: DeleteBrochureResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - invalid brochure URL',
+  })
+  @ApiResponse({ status: 404, description: 'Project or brochure not found' })
+  async deleteBrochure(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() deleteBrochureDto: DeleteBrochureDto,
+    @GetUser() user: RealEstateDeveloperEmployee,
+  ): Promise<DeleteBrochureResponseDto> {
+    return this.projectService.deleteBrochure(
+      id,
+      deleteBrochureDto.brochureUrl,
+      user,
+    );
   }
 
   @Delete(':id/images')

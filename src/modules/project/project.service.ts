@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,6 +25,8 @@ import { PublishProjectDto } from './dto/publish-project.dto';
 import { UploadImageDto, UploadImageResponseDto } from './dto/upload-image.dto';
 import { DeleteImageResponseDto } from './dto/delete-image-response.dto';
 import { SearchProjectsDto } from './dto/search-projects.dto';
+import { UploadBrochureDto, UploadBrochureResponseDto } from './dto/upload-brochure.dto';
+import { DeleteBrochureResponseDto } from './dto/delete-brochure.dto';
 import { S3Service } from '../../services/s3.service';
 // Simple fuzzy search utility
 interface SearchResult<T> {
@@ -33,6 +36,8 @@ interface SearchResult<T> {
 
 @Injectable()
 export class ProjectService {
+  private readonly logger = new Logger(ProjectService.name);
+
   constructor(
     @InjectRepository(Project)
     private projectRepository: Repository<Project>,
@@ -327,6 +332,86 @@ export class ProjectService {
     return results;
   }
 
+  async uploadBrochure(
+    id: string,
+    file: Express.Multer.File,
+    uploadBrochureDto: UploadBrochureDto,
+    user: RealEstateDeveloperEmployee,
+  ): Promise<UploadBrochureResponseDto> {
+    const project = await this.findOne(id, user);
+
+    // If there's an existing brochure, delete it from S3 first
+    if (project.brochure && project.brochure.url) {
+      const bucketName = process.env.AWS_S3_BUCKET_NAME;
+      const s3Key = project.brochure.url.replace(`https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/`, '');
+      
+      try {
+        await this.s3Service.deleteFile(s3Key);
+      } catch (error) {
+        this.logger.warn(`Failed to delete existing brochure: ${s3Key}`, error);
+      }
+    }
+
+    // Upload new file to S3 in a separate brochures folder
+    const uploadResult = await this.s3Service.uploadFile(file, {
+      folder: `projects/${id}/brochures`,
+      contentType: file.mimetype,
+      metadata: {
+        projectId: id,
+        uploadedBy: user.id,
+        brochureName: uploadBrochureDto.name || file.originalname,
+      },
+    });
+
+    // Create brochure object with url and name
+    const brochureObject = {
+      url: uploadResult.url,
+      name: uploadBrochureDto.name || file.originalname.replace(/\.[^/.]+$/, ''), // Remove file extension from name
+    };
+
+    // Set the single brochure object
+    project.brochure = brochureObject;
+
+    await this.projectRepository.save(project);
+
+    return {
+      url: uploadResult.url,
+      name: brochureObject.name,
+      fileSize: uploadResult.fileSize,
+      mimeType: uploadResult.mimeType,
+    };
+  }
+
+  async deleteBrochure(
+    id: string,
+    brochureUrl: string,
+    user: RealEstateDeveloperEmployee,
+  ): Promise<DeleteBrochureResponseDto> {
+    const project = await this.findOne(id, user);
+
+    if (!project.brochure || project.brochure.url !== brochureUrl) {
+      throw new NotFoundException('Brochure not found in project');
+    }
+
+    // Extract S3 key from URL
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
+    const s3Key = brochureUrl.replace(`https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/`, '');
+
+    // Delete from S3
+    await this.s3Service.deleteFile(s3Key);
+
+    // Remove the brochure from project
+    project.brochure = null;
+    await this.projectRepository.save(project);
+
+    // Return success message with details
+    return {
+      message: 'Brochure deleted successfully',
+      deletedBrochureUrl: brochureUrl,
+      remainingBrochuresCount: 0,
+    };
+  }
+
   async deleteImage(
     id: string,
     imageUrl: string,
@@ -371,6 +456,19 @@ export class ProjectService {
         isActive: true,
       },
       relations: ['realEstateDeveloper'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
+  async getProjectsByDeveloper(developerId: string): Promise<Project[]> {
+    return this.projectRepository.find({
+      where: {
+        realEstateDeveloperId: developerId,
+        isActive: true,
+      },
+      relations: ['projectManager', 'salesManager'],
       order: {
         createdAt: 'DESC',
       },

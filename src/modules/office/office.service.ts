@@ -115,4 +115,41 @@ export class OfficeService {
       relations: ['employees'],
     });
   }
+
+  async getOfficeEmployees(officeId: string, realEstateDeveloperId: string) {
+    const office = await this.officeRepository.findOne({
+      where: { 
+        id: officeId, 
+        realEstateDeveloperId,
+        isActive: true 
+      },
+      relations: ['employees'],
+    });
+
+    if (!office) {
+      throw new NotFoundException('Office not found or not from your organization');
+    }
+
+    // Filter only active employees
+    const activeEmployees = office.employees.filter(employee => employee.isActive);
+
+    return {
+      office: {
+        id: office.id,
+        name: office.name,
+        address: office.address,
+        isMainOffice: office.isMainOffice,
+      },
+      employees: activeEmployees.map(employee => ({
+        id: employee.id,
+        username: employee.username,
+        name: employee.name,
+        email: employee.email,
+        role: employee.role,
+        isActive: employee.isActive,
+        createdAt: employee.createdAt,
+      })),
+      totalEmployees: activeEmployees.length,
+    };
+  }
 }

@@ -88,4 +88,48 @@ export class OfficeController {
   remove(@Param('id') id: string) {
     return this.officeService.remove(id);
   }
+
+  @Get(':id/employees')
+  @ApiOperation({ summary: 'Get all employees of a specific office' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'List of employees in the office',
+    schema: {
+      type: 'object',
+      properties: {
+        office: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            name: { type: 'string' },
+            address: { type: 'string' },
+            isMainOffice: { type: 'boolean' }
+          }
+        },
+        employees: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              username: { type: 'string' },
+              name: { type: 'string' },
+              email: { type: 'string' },
+              role: { type: 'string' },
+              isActive: { type: 'boolean' },
+              createdAt: { type: 'string', format: 'date-time' }
+            }
+          }
+        },
+        totalEmployees: { type: 'number' }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Office not found or not from your organization' })
+  getOfficeEmployees(
+    @Param('id') id: string,
+    @GetUser() user: RealEstateDeveloperEmployee,
+  ) {
+    return this.officeService.getOfficeEmployees(id, user.realEstateDeveloperId);
+  }
 }
